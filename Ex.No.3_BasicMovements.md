@@ -1,6 +1,6 @@
 # Ex.No: 3  Basic movements in Unity 
-### DATE:                                                                            
-### REGISTER NUMBER : 
+### DATE:29-04-2026                                                                            
+### REGISTER NUMBER : 212223240169
 ### AIM: 
  To learn the basic movements translation,scaling and rotation of game objects through code.
 ### Procedure:
@@ -18,48 +18,43 @@
 ### Program 
 ```
 using UnityEngine;
-public class TransformOperations : MonoBehaviour
+
+public class NewMonoBehaviourScript : MonoBehaviour
 {
-    public Transform object1; // Object for translation
-    public Transform object2; // Object for rotation
-    public Transform object3; // Object for scaling
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public Transform ob1;
+    public Transform ob2;
+    public Transform ob3;
+    void Start()
+    {
+        
+    }
 
-    public float moveSpeed = 2f;  // Speed of translation
-    public float rotateSpeed = 50f; // Speed of rotation
-    public float scaleSpeed = 0.5f; // Speed of scaling
-
+    // Update is called once per frame
     void Update()
     {
-        // Translate (Move) object1 along the X-axis- Time.deltaTime to make movement smooth across all frame rates
-        if (object1 != null)
+        if (Input.GetKeyUp(KeyCode.X))
         {
-           // object1.position += Vector3.right * moveSpeed;
-               object1.Translate(0.02f,0,0);
-
+            ob1.Translate(0.2f,0,0);
         }
-
-        // Rotate object2 around the Y-axis
-        if (object2 != null)
+        if (Input.GetKeyUp(KeyCode.Y))
         {
-            //object2.Rotate(Vector3.up * rotateSpeed * Time.deltaTime);
-            //object2.Rotate(0,0.02f.0);
+            ob2.localScale+=new Vector3(2f,2f,2f);
         }
-
-        // Scale object3 up and down
-        if (object3 != null)
+        if (Input.GetKeyUp(KeyCode.Z))
         {
-           // float scaleChange = Mathf.PingPong(Time.time * scaleSpeed, 1f) + 0.5f; // generates a value that moves back and forth between 0 and length
-           // object3.localScale = new Vector3(scaleChange, scaleChange, scaleChange);
-            object3.localScale+=new Vector3(0.02f.0.02f,0);
-
+            ob3.Rotate(0,20f,0);
         }
     }
 }
+
 ```
 ### Output:
 
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/3fb5f02c-f924-4086-808a-c754eee693be" />
 
 
+<img width="1918" height="1079" alt="image" src="https://github.com/user-attachments/assets/360f36fa-93d9-4238-a8f4-0fa27f5b8b1c" />
 
 
 
