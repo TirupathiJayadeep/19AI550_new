@@ -1,330 +1,143 @@
-# Ex.No: 10  Implementation of 2D game using c# language and AI technology.
-### DATE: 25-05-2026                                                                         
-### REGISTER NUMBER : 212223240169
+# Ex.No: 10  Implementation of 2D game Catch the Falling Apple
+### DATE:  31-05-2026                                                               
+### REGISTER NUMBER :   212223240169
 ### AIM: 
-
- To develop a 2D Mario-style platformer game in Unity with coin collection, enemy interaction, and score display using c# language and AI.
- 
+To develop a game Catch the Falling Apple in Unity 
 ### Algorithm:
 ```
-1. Initialize Unity project with 2D settings
-2. Create Mario player controller with movement and jump logic
-3. Design levels using tilesets and add colliders
-4. Add coin prefabs and place them in levels
-5. Detect coin collection and update score in UI
-6. Detect player death (e.g., fall or enemy hit)
-7. Show final coin score on death or level complete
-8. Add enemies and simple AI (e.g., patrol behavior)
-9. Create main menu and restart level functionality
-10. finally, Character perfoms following things in Game:
-    side-scrolling stages while avoiding hazards such as enemies
-    and pits with the aid of power-ups such as the Super Mushroom,
-    Fire Flower, and Starman.
+1) Create a new 2D Unity project and setup folders: Scenes, Scripts, Sprites, Prefabs.
 
+2) Add Main Camera and Background sprite (Order in Layer = 0).
+
+3) Create Canvas → ScoreText UI for displaying score.
+
+4) Add Basket sprite with Rigidbody2D (Kinematic), BoxCollider2D (Is Trigger), Order in Layer = 1.
+
+5) Create Apple sprite, add Rigidbody2D (Dynamic), CircleCollider2D, Tag = “Apple”, Order in Layer = 2.
+
+6) Drag Apple into Prefabs folder and delete it from Scene.
+
+7) Create PlayerController.cs to move basket horizontally and detect collisions with apples.
+
+8) Create AppleSpawner.cs to spawn Apple prefab at random X positions at the top of the screen.
+
+9) Create GameManager.cs to store score and update ScoreText when an apple is caught.
+
+10) Apples fall due to physics; basket catches apples → destroy apple → increment score.
+
+11) Optional: destroy apples that fall below screen to handle misses.
+
+12) Optional: add sounds, lives, and difficulty scaling for polish.
 ```  
 ### Program:
-
-Player Movement :-
-
-```
+##### PlayerController.cs
+```c
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
-public class PlayerMovement : MonoBehaviour
+public class PlayerController : MonoBehaviour
 {
-    private Camera mainCamera;
-    private Rigidbody2D rb;
-    private Collider2D capsuleCollider;
+    public float speed = 5f;
+    private float screenHalfWidth;
 
-    private Vector2 velocity;
-    private float inputAxis;
-
-    public float moveSpeed = 8f;
-    public float maxJumpHeight = 5f;
-    public float maxJumpTime = 1f;
-    public float jumpForce => (2f * maxJumpHeight) / (maxJumpTime / 2f);
-    public float gravity => (-2f * maxJumpHeight) / Mathf.Pow(maxJumpTime / 2f, 2f);
-
-    public bool grounded { get; private set; }
-    public bool jumping { get; private set; }
-    public bool running => Mathf.Abs(velocity.x) > 0.25f || Mathf.Abs(inputAxis) > 0.25f;
-    public bool sliding => (inputAxis > 0f && velocity.x < 0f) || (inputAxis < 0f && velocity.x > 0f);
-    public bool falling => velocity.y < 0f && !grounded;
-
-    private void Awake()
+    void Start()
     {
-        mainCamera = Camera.main;
-        rb = GetComponent<Rigidbody2D>();
-        capsuleCollider = GetComponent<Collider2D>();
+        float halfPlayerWidth = transform.localScale.x / 2f;
+        screenHalfWidth = Camera.main.aspect * Camera.main.orthographicSize - halfPlayerWidth;
     }
 
-    private void OnEnable()
+    void Update()
     {
-        rb.isKinematic = false;
-        capsuleCollider.enabled = true;
-        velocity = Vector2.zero;
-        jumping = false;
+        float moveInput = Input.GetAxis("Horizontal");
+        transform.Translate(Vector2.right * moveInput * speed * Time.deltaTime);
+
+        // Keep player inside screen boundaries
+        if (transform.position.x < -screenHalfWidth)
+            transform.position = new Vector2(-screenHalfWidth, transform.position.y);
+        if (transform.position.x > screenHalfWidth)
+            transform.position = new Vector2(screenHalfWidth, transform.position.y);
     }
 
-    private void OnDisable()
+    void OnTriggerEnter2D(Collider2D col)
     {
-        rb.isKinematic = true;
-        capsuleCollider.enabled = false;
-        velocity = Vector2.zero;
-        inputAxis = 0f;
-        jumping = false;
-    }
-
-    private void Update()
-    {
-        HorizontalMovement();
-
-        grounded = rb.Raycast(Vector2.down);
-
-        if (grounded) {
-            GroundedMovement();
-        }
-
-        ApplyGravity();
-    }
-
-    private void FixedUpdate()
-    {
-        // Move mario based on his velocity
-        Vector2 position = rb.position;
-        position += velocity * Time.fixedDeltaTime;
-
-        // Clamp within the screen bounds
-        Vector2 leftEdge = mainCamera.ScreenToWorldPoint(Vector2.zero);
-        Vector2 rightEdge = mainCamera.ScreenToWorldPoint(new Vector2(Screen.width, Screen.height));
-        position.x = Mathf.Clamp(position.x, leftEdge.x + 0.5f, rightEdge.x - 0.5f);
-
-        rb.MovePosition(position);
-    }
-
-    private void HorizontalMovement()
-    {
-        // Accelerate / decelerate
-        inputAxis = Input.GetAxis("Horizontal");
-        velocity.x = Mathf.MoveTowards(velocity.x, inputAxis * moveSpeed, moveSpeed * Time.deltaTime);
-
-        // Check if running into a wall
-        if (rb.Raycast(Vector2.right * velocity.x)) {
-            velocity.x = 0f;
-        }
-
-        // Flip sprite to face direction
-        if (velocity.x > 0f) {
-            transform.eulerAngles = Vector3.zero;
-        } else if (velocity.x < 0f) {
-            transform.eulerAngles = new Vector3(0f, 180f, 0f);
-        }
-    }
-
-    private void GroundedMovement()
-    {
-        // Prevent gravity from infinitly building up
-        velocity.y = Mathf.Max(velocity.y, 0f);
-        jumping = velocity.y > 0f;
-
-        // Perform jump
-        if (Input.GetButtonDown("Jump"))
+        if (col.CompareTag("apple"))
         {
-            velocity.y = jumpForce;
-            jumping = true;
-        }
-    }
-
-    private void ApplyGravity()
-    {
-        // Check if falling
-        bool falling = velocity.y < 0f || !Input.GetButton("Jump");
-        float multiplier = falling ? 2f : 1f;
-
-        // Apply gravity and terminal velocity
-        velocity.y += gravity * multiplier * Time.deltaTime;
-        velocity.y = Mathf.Max(velocity.y, gravity / 2f);
-    }
-
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Enemy"))
-        {
-            // Bounce off enemy head
-            if (transform.DotTest(collision.transform, Vector2.down))
-            {
-                velocity.y = jumpForce / 2f;
-                jumping = true;
-            }
-        }
-        else if (collision.gameObject.layer != LayerMask.NameToLayer("PowerUp"))
-        {
-            // Stop vertical movement if mario bonks his head
-            if (transform.DotTest(collision.transform, Vector2.up)) {
-                velocity.y = 0f;
-            }
+            Destroy(col.gameObject);
+            FindObjectOfType<GameManager>().AddScore(1);
         }
     }
 
 }
-```
-SideScrollingCamera :-
 
 ```
+
+##### GameManager.cs
+```c
+using UnityEngine;
+using TMPro;
+
+public class GameManager : MonoBehaviour
+{
+    public TextMeshProUGUI scoreText;
+    private int score = 0;
+
+    void Start()
+    {
+        UpdateScoreText();
+    }
+
+    public void AddScore(int value)
+    {
+        score += value;
+        UpdateScoreText();
+    }
+
+    void UpdateScoreText()
+    {
+        scoreText.text = "Score: " + score;
+    }
+}
+
+```
+
+##### AppleSpawner.cs
+```c
 using UnityEngine;
 
-[RequireComponent(typeof(Camera))]
-public class SideScrollingCamera : MonoBehaviour
+public class AppleSpawner : MonoBehaviour
 {
-    public Transform trackedObject;
-    public float height = 6.5f;
-    public float undergroundHeight = -9.5f;
-    public float undergroundThreshold = 0f;
+    public GameObject applePrefab;
+    public float spawnRate = 1.2f;
+    private float screenHalfWidth;
 
-    private void LateUpdate()
+    void Start()
     {
-        Vector3 cameraPosition = transform.position;
-        cameraPosition.x = Mathf.Max(cameraPosition.x, trackedObject.position.x);
-        transform.position = cameraPosition;
+        // Calculate visible horizontal limit (camera-based)
+        float halfAppleWidth = applePrefab.transform.localScale.x / 2f;
+        screenHalfWidth = Camera.main.aspect * Camera.main.orthographicSize - halfAppleWidth;
+
+        // Start spawning apples
+        InvokeRepeating("SpawnApple", 1f, spawnRate);
     }
 
-    public void SetUnderground(bool underground)
+    void SpawnApple()
     {
-        Vector3 cameraPosition = transform.position;
-        cameraPosition.y = underground ? undergroundHeight : height;
-        transform.position = cameraPosition;
+        float xPos = Random.Range(-screenHalfWidth, screenHalfWidth);
+        Vector2 spawnPos = new Vector2(xPos, 6f); // 6f = just above top of screen
+        Instantiate(applePrefab, spawnPos, Quaternion.identity);
     }
-
 }
-```
-AnimatedSprite :- 
 
 ```
-using UnityEngine;
-
-[RequireComponent(typeof(SpriteRenderer))]
-public class AnimatedSprite : MonoBehaviour
-{
-    public Sprite[] sprites;
-    public float framerate = 1f / 6f;
-
-    private SpriteRenderer spriteRenderer;
-    private int frame;
-
-    private void Awake()
-    {
-        spriteRenderer = GetComponent<SpriteRenderer>();
-    }
-
-    private void OnEnable()
-    {
-        InvokeRepeating(nameof(Animate), framerate, framerate);
-    }
-
-    private void OnDisable()
-    {
-        CancelInvoke();
-    }
-
-    private void Animate()
-    {
-        frame++;
-
-        if (frame >= sprites.Length) {
-            frame = 0;
-        }
-
-        if (frame >= 0 && frame < sprites.Length) {
-            spriteRenderer.sprite = sprites[frame];
-        }
-    }
-
-}
-```
-DeathAnimation :-
-
-```
-using System.Collections;
-using UnityEngine;
-
-public class DeathAnimation : MonoBehaviour
-{
-    public SpriteRenderer spriteRenderer;
-    public Sprite deadSprite;
-
-    private void Reset()
-    {
-        spriteRenderer = GetComponent<SpriteRenderer>();
-    }
-
-    private void OnEnable()
-    {
-        UpdateSprite();
-        DisablePhysics();
-        StartCoroutine(Animate());
-    }
-
-    private void OnDisable()
-    {
-        StopAllCoroutines();
-    }
-
-    private void UpdateSprite()
-    {
-        spriteRenderer.enabled = true;
-        spriteRenderer.sortingOrder = 10;
-
-        if (deadSprite != null) {
-            spriteRenderer.sprite = deadSprite;
-        }
-    }
-
-    private void DisablePhysics()
-    {
-        Collider2D[] colliders = GetComponents<Collider2D>();
-
-        for (int i = 0; i < colliders.Length; i++) {
-            colliders[i].enabled = false;
-        }
-
-        if (TryGetComponent(out Rigidbody2D rigidbody)) {
-            rigidbody.isKinematic = true;
-        }
-
-        if (TryGetComponent(out PlayerMovement playerMovement)) {
-            playerMovement.enabled = false;
-        }
-
-        if (TryGetComponent(out EntityMovement entityMovement)) {
-            entityMovement.enabled = false;
-        }
-    }
-
-    private IEnumerator Animate()
-    {
-        float elapsed = 0f;
-        float duration = 3f;
-
-        float jumpVelocity = 10f;
-        float gravity = -36f;
-
-        Vector3 velocity = Vector3.up * jumpVelocity;
-
-        while (elapsed < duration)
-        {
-            transform.position += velocity * Time.deltaTime;
-            velocity.y += gravity * Time.deltaTime;
-            elapsed += Time.deltaTime;
-            yield return null;
-        }
-    }
-
-}
-```
-
 ### Output:
-![Screenshot 2025-05-19 144050](https://github.com/user-attachments/assets/2497abc3-ef6c-467d-8def-8631fe96ba31)
+
+<img width="1919" height="1020" alt="1" src="https://github.com/user-attachments/assets/b5d89358-f204-4a90-9212-7216c2f205fc" />
+
+<img width="1919" height="1022" alt="2" src="https://github.com/user-attachments/assets/b24a9e19-9f8a-4437-89b6-275d6c6adb50" />
+
+<img width="1919" height="1025" alt="3" src="https://github.com/user-attachments/assets/27cfbe8e-5d32-4284-8fe2-436c0ed0142f" />
+
+<img width="1919" height="1022" alt="4" src="https://github.com/user-attachments/assets/f411f386-a689-45b8-9f22-1e839dbd36bc" />
+
 
 ### Result:
-Thus the game in Unity with coin collection, enemy interaction, and score display using c# language and adopted AI technology.
- 
+Thus the game was developed using Unity and adopted Colliders, Triggers AI technology.
